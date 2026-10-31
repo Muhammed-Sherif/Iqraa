@@ -112,8 +112,7 @@ export default function Settings() {
     }
   }
 
-  const appVersion =
-    Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0';
+  const appVersion = Constants.expoConfig?.version ;
 
   if (loading) {
     return (
@@ -130,7 +129,7 @@ export default function Settings() {
         className="flex-row items-center justify-between border-b border-border px-5 py-4"
         style={{ direction: 'rtl' }}
       >
-        <Text className="text-2xl font-bold text-header">
+        <Text className="text-2xl font-bold text-foreground">
           الإعدادات
         </Text>
         {saving && (

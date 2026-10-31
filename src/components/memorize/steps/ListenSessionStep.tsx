@@ -107,7 +107,7 @@ export function ListenSessionStep({ session }: ListenSessionStepProps) {
       </ScrollView>
 
       {/* ══ Bottom Navigation Bar ═════════════════════════════════════ */}
-      <View className="flex-row gap-3 border-t border-border bg-surface p-4">
+      <View className="flex-row gap-3 border-t border-border p-4">
         {/* Previous Button */}
         <Pressable
           onPress={goPrev}

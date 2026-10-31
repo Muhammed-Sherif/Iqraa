@@ -47,6 +47,7 @@ interface MemorizationState {
     onFinished?: () => void,
   ) => void;
   cancelSakta: () => void;
+  skipSakta: () => void;
 }
 interface PlayerSession {
   currentStep: number;
@@ -55,6 +56,7 @@ interface PlayerSession {
   isInSakta: boolean;
   isTransitioning: boolean;
   saktaDurationSeconds: number;
+  skipSakta: () => void;
 }
 let saktaInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -83,7 +85,12 @@ export const useMemorization = create<MemorizationState>((set, get) => ({
   },
   task: null,
   setTask: (task: MemorizationTask) => {
-    set({ task, currentScreen: 'listen', recordedAudioUri: null, lastDurationMillis: 0 });
+    set({
+      task,
+      currentScreen: 'listen',
+      recordedAudioUri: null,
+      lastDurationMillis: 0,
+    });
     if (!task.quranText || task.quranText.length === 0) {
       get().loadTaskAyat();
     }
@@ -123,14 +130,21 @@ export const useMemorization = create<MemorizationState>((set, get) => ({
     });
   },
   finishTask: () => {
-    set({ task: null, currentScreen: 'listen', recordedAudioUri: null, lastDurationMillis: 0 });
+    set({
+      task: null,
+      currentScreen: 'listen',
+      recordedAudioUri: null,
+      lastDurationMillis: 0,
+    });
   },
   tasks: [],
   setTasks: (tasks: MemorizationTask[]) => set({ tasks }),
   recordedAudioUri: null,
-  setRecordedAudioUri: (recordedAudioUri: string | null) => set({ recordedAudioUri }),
+  setRecordedAudioUri: (recordedAudioUri: string | null) =>
+    set({ recordedAudioUri }),
   lastDurationMillis: 0,
-  setLastDurationMillis: (lastDurationMillis: number) => set({ lastDurationMillis }),
+  setLastDurationMillis: (lastDurationMillis: number) =>
+    set({ lastDurationMillis }),
   settings: {
     repeatCount: 3,
     sakta: 5,
@@ -145,6 +159,7 @@ export const useMemorization = create<MemorizationState>((set, get) => ({
     isInSakta: false,
     isTransitioning: false,
     saktaDurationSeconds: 0,
+    skipSakta: () => {},
   },
   setPlayerSession: (playerSession) => {
     set((state) => ({
@@ -177,7 +192,10 @@ export const useMemorization = create<MemorizationState>((set, get) => ({
     player.seekTo(0);
     player.play();
   },
-  nextAyaOrAdvanceStep: (steps: number[][], onFinished?: () => void): boolean => {
+  nextAyaOrAdvanceStep: (
+    steps: number[][],
+    onFinished?: () => void,
+  ): boolean => {
     let finished = false;
     set((state) => {
       const { currentStep, currentAyaKey } = state.playerSession;
@@ -301,14 +319,8 @@ export const useMemorization = create<MemorizationState>((set, get) => ({
 
     saktaInterval = setInterval(() => {
       remainingSeconds -= 1;
-      if (remainingSeconds > 0) {
-        set((state) => ({
-          playerSession: {
-            ...state.playerSession,
-            saktaDurationSeconds: remainingSeconds,
-          },
-        }));
-      } else {
+      const currentIsInSakta = get().playerSession.isInSakta;
+      if (remainingSeconds <= 0 || !currentIsInSakta) {
         if (saktaInterval) {
           clearInterval(saktaInterval);
           saktaInterval = null;
@@ -338,8 +350,21 @@ export const useMemorization = create<MemorizationState>((set, get) => ({
             },
           }));
         }, 300);
+      } else {
+        set((state) => ({
+          playerSession: {
+            ...state.playerSession,
+            saktaDurationSeconds: remainingSeconds,
+          },
+        }));
       }
     }, 1000);
   },
+  skipSakta: () =>
+    set((state) => ({
+      playerSession: {
+        ...state.playerSession,
+        isInSakta: false,
+      },
+    })),
 }));
-
