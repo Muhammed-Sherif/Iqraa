@@ -4,13 +4,27 @@ import {
   transition,
 } from '../memorization/sessionEngine';
 import { SessionState } from '../types';
-test('case one ', () => {
-  expect(buildAccumulationSteps([5, 6, 7])).toEqual([[5], [5, 6], [5, 6, 7]]);
+
+describe('buildAccumulationSteps', () => {
+  test('creates accumulation steps pairing adjacent ayat and ending with full ayat', () => {
+    expect(buildAccumulationSteps([5, 6, 7])).toEqual([
+      [5],
+      [5, 6],
+      [6, 7],
+      [7],
+      [5, 6, 7],
+    ]);
+  });
+
+  test('throws error when passed empty ayat array', () => {
+    expect(() => buildAccumulationSteps([])).toThrow("can't pass empty steps");
+  });
 });
 
 type Listening = Extract<SessionState, { type: 'listening' }>;
 
 const steps = buildAccumulationSteps([5, 6, 7]);
+const lastStepIndex = steps.length - 1;
 
 function listening(overrides: Partial<Listening> = {}): Listening {
   return {
@@ -47,17 +61,25 @@ describe('transition', () => {
   });
 
   it('listening: limit reached on the last step stays on that step', () => {
-    const result = transition(listening({ currentStep: 2, repeatedCount: 2 }), {
-      type: 'repetitionFinished',
-    });
-    expect(result).toEqual(listening({ currentStep: 2, repeatedCount: 3 }));
+    const result = transition(
+      listening({ currentStep: lastStepIndex, repeatedCount: 2 }),
+      {
+        type: 'repetitionFinished',
+      },
+    );
+    expect(result).toEqual(
+      listening({ currentStep: lastStepIndex, repeatedCount: 3 }),
+    );
   });
 
   it('listening: hard restarts from the first step', () => {
-    const result = transition(listening({ currentStep: 2, repeatedCount: 3 }), {
-      type: 'listeningRated',
-      rate: 'hard',
-    });
+    const result = transition(
+      listening({ currentStep: lastStepIndex, repeatedCount: 3 }),
+      {
+        type: 'listeningRated',
+        rate: 'hard',
+      },
+    );
     expect(result).toEqual(listening({ currentStep: 0, repeatedCount: 0 }));
   });
 
@@ -65,7 +87,7 @@ describe('transition', () => {
     'listening: %s moves to tasmee with no rate',
     (rate) => {
       const result = transition(
-        listening({ currentStep: 2, repeatedCount: 3 }),
+        listening({ currentStep: lastStepIndex, repeatedCount: 3 }),
         { type: 'listeningRated', rate },
       );
       expect(result).toEqual({ taskId: 1, type: 'tasmee', rate: null });
