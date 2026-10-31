@@ -40,6 +40,7 @@ export default function AudioPlayer({
   const setPlayer = useMemorization((state) => state.setPlayer);
   const handleAyaFinished = useMemorization((state) => state.handleAyaFinished);
   const cancelSakta = useMemorization((state) => state.cancelSakta);
+  const skipSakta = useMemorization((state) => state.skipSakta);
 
   // Refs to guard against double-firing effects
   const stepDurationRef = useRef<number>(0);
@@ -151,7 +152,7 @@ export default function AudioPlayer({
 
   const handleTogglePlay = () => {
     if (isInSakta) {
-      cancelSakta();
+      skipSakta();
       return;
     }
     if (status.playing) {

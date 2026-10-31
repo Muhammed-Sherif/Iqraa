@@ -59,6 +59,7 @@ interface PlayerSession {
   skipSakta: () => void;
 }
 let saktaInterval: ReturnType<typeof setInterval> | null = null;
+let activeStepTransition: (() => void) | null = null;
 
 export const useMemorization = create<MemorizationState>((set, get) => ({
   session: null,
@@ -243,6 +244,7 @@ export const useMemorization = create<MemorizationState>((set, get) => ({
       clearInterval(saktaInterval);
       saktaInterval = null;
     }
+    activeStepTransition = null;
     set((state) => ({
       playerSession: {
         ...state.playerSession,
@@ -317,39 +319,44 @@ export const useMemorization = create<MemorizationState>((set, get) => ({
       },
     }));
 
+    const advanceToNextStep = () => {
+      if (saktaInterval) {
+        clearInterval(saktaInterval);
+        saktaInterval = null;
+      }
+      const nextStepIndex = currentStep + 1;
+      set((state) => ({
+        playerSession: {
+          ...state.playerSession,
+          isInSakta: false,
+          currentStep: nextStepIndex,
+          currentAyaKey: 0,
+          saktaDurationSeconds: 0,
+        },
+      }));
+
+      const nextAyahNumber = steps[nextStepIndex]?.[0];
+      if (nextAyahNumber !== undefined) {
+        onPlayNext(nextAyahNumber);
+      }
+
+      setTimeout(() => {
+        set((state) => ({
+          playerSession: {
+            ...state.playerSession,
+            isTransitioning: false,
+          },
+        }));
+      }, 300);
+    };
+
+    activeStepTransition = advanceToNextStep;
+
     saktaInterval = setInterval(() => {
       remainingSeconds -= 1;
       const currentIsInSakta = get().playerSession.isInSakta;
       if (remainingSeconds <= 0 || !currentIsInSakta) {
-        if (saktaInterval) {
-          clearInterval(saktaInterval);
-          saktaInterval = null;
-        }
-
-        const nextStepIndex = currentStep + 1;
-        set((state) => ({
-          playerSession: {
-            ...state.playerSession,
-            isInSakta: false,
-            currentStep: nextStepIndex,
-            currentAyaKey: 0,
-            saktaDurationSeconds: 0,
-          },
-        }));
-
-        const nextAyahNumber = steps[nextStepIndex]?.[0];
-        if (nextAyahNumber !== undefined) {
-          onPlayNext(nextAyahNumber);
-        }
-
-        setTimeout(() => {
-          set((state) => ({
-            playerSession: {
-              ...state.playerSession,
-              isTransitioning: false,
-            },
-          }));
-        }, 300);
+        advanceToNextStep();
       } else {
         set((state) => ({
           playerSession: {
@@ -360,11 +367,17 @@ export const useMemorization = create<MemorizationState>((set, get) => ({
       }
     }, 1000);
   },
-  skipSakta: () =>
-    set((state) => ({
-      playerSession: {
-        ...state.playerSession,
-        isInSakta: false,
-      },
-    })),
+  skipSakta: () => {
+    if (activeStepTransition) {
+      activeStepTransition();
+    } else {
+      set((state) => ({
+        playerSession: {
+          ...state.playerSession,
+          isInSakta: false,
+          saktaDurationSeconds: 0,
+        },
+      }));
+    }
+  },
 }));
